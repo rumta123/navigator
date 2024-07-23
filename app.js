@@ -129,6 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }));
         }
     }
+});
 
     function clearMap() {
         // Clear all objects from the map
@@ -138,5 +139,3 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Reset the route line
         routeLine.geometry.setCoordinates([]);
     }
-});
-
