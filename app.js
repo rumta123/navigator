@@ -1,42 +1,16 @@
 let map;
-        let marker;
-        let polyline;
-        let path = [];
+        let line;
+        let startPoint;
+        let endPoint;
         let recording = false;
         let watchId;
-        const recordButton = document.getElementById('recordButton');
+        let path = [];
 
-        function initMap() {
+        document.addEventListener('DOMContentLoaded', () => {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(position => {
-                    const coords = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    };
-
-                    map = new google.maps.Map(document.getElementById('map'), {
-                        center: coords,
-                        zoom: 16,
-                        mapTypeId: 'roadmap',
-                        tilt: 0 // Ensure initial 2D view
-                    });
-
-                    marker = new google.maps.Marker({
-                        position: coords,
-                        map: map,
-                        title: 'Вы здесь'
-                    });
-
-                    polyline = new google.maps.Polyline({
-                        map: map,
-                        path: path,
-                        geodesic: true,
-                        strokeColor: '#FF0000',
-                        strokeOpacity: 1.0,
-                        strokeWeight: 2
-                    });
-
-                    recordButton.addEventListener('click', toggleRecording);
+                    const userCoords = [position.coords.latitude, position.coords.longitude];
+                    ymaps.ready(() => initMap(userCoords));
                 }, error => {
                     console.error('Error getting position:', error);
                     alert('Не удалось определить ваше местоположение.');
@@ -44,46 +18,68 @@ let map;
             } else {
                 alert('Геолокация не поддерживается вашим браузером.');
             }
+        });
+
+        function initMap(userCoords) {
+            map = new ymaps.Map('map', {
+                center: userCoords,
+                zoom: 16,
+                controls: ['zoomControl', 'fullscreenControl']
+            });
+
+            line = new ymaps.Polyline([], {
+                strokeColor: '#FF0000',
+                strokeWidth: 4
+            }, {
+                draggable: false
+            });
+
+            map.geoObjects.add(line);
+
+            document.getElementById('recordButton').addEventListener('click', toggleRecording);
         }
 
         function toggleRecording() {
             recording = !recording;
             if (recording) {
-                recordButton.innerText = 'Остановить запись';
+                document.getElementById('recordButton').innerText = 'Остановить запись';
                 startRecording();
             } else {
-                recordButton.innerText = 'Начать запись';
+                document.getElementById('recordButton').innerText = 'Начать запись';
                 stopRecording();
             }
         }
 
         function startRecording() {
-            watchId = navigator.geolocation.watchPosition(position => {
-                const newCoords = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-                
-                // Add the new coordinates to the path and update the polyline
-                path.push(newCoords);
-                polyline.setPath(path);
-                map.panTo(newCoords); // Optional: pan the map to the new position
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(position => {
+                    const coords = [position.coords.latitude, position.coords.longitude];
+                    
+                    if (!startPoint) {
+                        startPoint = coords;
+                        map.geoObjects.add(new ymaps.Placemark(startPoint, { hintContent: 'Старт' }));
+                    }
 
-                // Update the marker's position
-                marker.setPosition(newCoords);
-            }, error => {
-                console.error('Error getting position:', error);
-            }, {
-                enableHighAccuracy: true,
-                maximumAge: 0,
-                timeout: 5000
-            });
-        }
+                    path.push(coords);
 
-        function stopRecording() {
-            if (watchId !== undefined) {
-                navigator.geolocation.clearWatch(watchId);
+                    endPoint = coords;
+                    const lineCoords = [startPoint, ...path, endPoint];
+                    line.geometry.setCoordinates(lineCoords);
+                    map.setCenter(endPoint);
+                }, error => {
+                    console.error('Error getting position:', error);
+                }, {
+                    enableHighAccuracy: true,
+                    maximumAge: 0,
+                    timeout: 5000
+                });
+            } else {
+                alert('Геолокация не поддерживается вашим браузером.');
             }
         }
 
-        window.onload = initMap;
+        function stopRecording() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+            }
+        }
