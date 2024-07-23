@@ -15,9 +15,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     controls: ['zoomControl', 'fullscreenControl']
                 });
 
-                // Enable 3D mode
-                map.panes.get('ground').getElement().style.transform = 'perspective(500px) rotateX(10deg)';
-
                 // Create the route line
                 routeLine = new ymaps.Polyline([], {
                     strokeColor: '#0000FF',
@@ -47,9 +44,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             controls: ['zoomControl', 'fullscreenControl']
         });
 
-        // Enable 3D mode
-        map.panes.get('ground').getElement().style.transform = 'perspective(500px) rotateX(10deg)';
-
         // Create the route line
         routeLine = new ymaps.Polyline([], {
             strokeColor: '#0000FF',
@@ -68,10 +62,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             recordButton.textContent = 'Остановить запись';
             recordButton.style.backgroundColor = '#f00'; // Change button color to red
             startGeolocation(); // Start tracking user's location
+
+            // Switch to 3D mode
+            map.panes.get('ground').getElement().style.transform = 'perspective(500px) rotateX(10deg)';
         } else {
             recordButton.textContent = 'Начать запись';
             recordButton.style.backgroundColor = '#fff'; // Reset button color
             navigator.geolocation.clearWatch(geolocationWatchId); // Stop tracking user's location
+
+            // Switch back to 2D mode
+            map.panes.get('ground').getElement().style.transform = '';
+
             if (routePoints.length > 1) {
                 // Add a marker for the end point
                 const endPoint = routePoints[routePoints.length - 1];
