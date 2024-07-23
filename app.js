@@ -82,6 +82,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     preset: 'islands#greenDotIcon'
                 }));
             }
+
+            clearMap(); // Clear the map after stopping the recording
         }
     }
 
@@ -128,5 +130,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 preset: 'islands#blueDotIcon'
             }));
         }
+    }
+
+    function clearMap() {
+        // Clear all objects from the map
+        map.geoObjects.removeAll();
+        // Clear the route points
+        routePoints = [];
+        // Reset the route line
+        routeLine.geometry.setCoordinates([]);
     }
 });
