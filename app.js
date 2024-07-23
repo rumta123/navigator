@@ -139,3 +139,4 @@ document.addEventListener('DOMContentLoaded', async () => {
         routeLine.geometry.setCoordinates([]);
     }
 });
+
