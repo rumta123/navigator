@@ -82,8 +82,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     preset: 'islands#greenDotIcon'
                 }));
             }
-
-            clearMap(); // Clear the map after stopping the recording
         }
     }
 
