@@ -130,12 +130,3 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 });
-
-    function clearMap() {
-        // Clear all objects from the map
-        map.geoObjects.removeAll();
-        // Clear the route points
-        routePoints = [];
-        // Reset the route line
-        routeLine.geometry.setCoordinates([]);
-    }
