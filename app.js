@@ -1,85 +1,131 @@
-let map;
-        let line;
-        let startPoint;
-        let endPoint;
-        let recording = false;
-        let watchId;
-        let path = [];
+document.addEventListener('DOMContentLoaded', async () => {
+    await ymaps.ready(init);
 
-        document.addEventListener('DOMContentLoaded', () => {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(position => {
-                    const userCoords = [position.coords.latitude, position.coords.longitude];
-                    ymaps.ready(() => initMap(userCoords));
-                }, error => {
-                    console.error('Error getting position:', error);
-                    alert('Не удалось определить ваше местоположение.');
+    let map, routeLine, routePoints = [], recording = false;
+    const recordButton = document.getElementById('recordButton');
+
+    function init() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(position => {
+                const coords = [position.coords.latitude, position.coords.longitude];
+                // Initialize the map at the user's current location
+                map = new ymaps.Map('map', {
+                    center: coords,
+                    zoom: 12,
+                    controls: ['zoomControl', 'fullscreenControl']
                 });
-            } else {
-                alert('Геолокация не поддерживается вашим браузером.');
-            }
+
+                // Enable 3D mode
+                map.panes.get('ground').getElement().style.transform = 'perspective(500px) rotateX(10deg)';
+
+                // Create the route line
+                routeLine = new ymaps.Polyline([], {
+                    strokeColor: '#0000FF',
+                    strokeWidth: 5,
+                });
+
+                map.geoObjects.add(routeLine);
+
+                // Add event listener to the record button
+                recordButton.addEventListener('click', toggleRecording);
+            }, error => {
+                console.error('Error getting position:', error);
+                // Fallback coordinates if geolocation fails
+                initMapWithFallbackCoords();
+            });
+        } else {
+            alert('Геолокация не поддерживается вашим браузером');
+            // Fallback coordinates if geolocation is not supported
+            initMapWithFallbackCoords();
+        }
+    }
+
+    function initMapWithFallbackCoords() {
+        map = new ymaps.Map('map', {
+            center: [55.753994, 37.622093], // Moscow coordinates
+            zoom: 12,
+            controls: ['zoomControl', 'fullscreenControl']
         });
 
-        function initMap(userCoords) {
-            map = new ymaps.Map('map', {
-                center: userCoords,
-                zoom: 16,
-                controls: ['zoomControl', 'fullscreenControl']
-            });
+        // Enable 3D mode
+        map.panes.get('ground').getElement().style.transform = 'perspective(500px) rotateX(10deg)';
 
-            line = new ymaps.Polyline([], {
-                strokeColor: '#FF0000',
-                strokeWidth: 4
-            }, {
-                draggable: false
-            });
+        // Create the route line
+        routeLine = new ymaps.Polyline([], {
+            strokeColor: '#0000FF',
+            strokeWidth: 5,
+        });
 
-            map.geoObjects.add(line);
+        map.geoObjects.add(routeLine);
 
-            document.getElementById('recordButton').addEventListener('click', toggleRecording);
-        }
+        // Add event listener to the record button
+        recordButton.addEventListener('click', toggleRecording);
+    }
 
-        function toggleRecording() {
-            recording = !recording;
-            if (recording) {
-                document.getElementById('recordButton').innerText = 'Остановить запись';
-                startRecording();
-            } else {
-                document.getElementById('recordButton').innerText = 'Начать запись';
-                stopRecording();
-            }
-        }
-
-        function startRecording() {
-            if (navigator.geolocation) {
-                watchId = navigator.geolocation.watchPosition(position => {
-                    const coords = [position.coords.latitude, position.coords.longitude];
-                    
-                    if (!startPoint) {
-                        startPoint = coords;
-                        map.geoObjects.add(new ymaps.Placemark(startPoint, { hintContent: 'Старт' }));
-                    }
-
-                    path.push(coords);
-
-                    endPoint = coords;
-                    const lineCoords = [startPoint, ...path, endPoint];
-                    line.geometry.setCoordinates(lineCoords);
-                    map.setCenter(endPoint);
-                }, error => {
-                    console.error('Error getting position:', error);
+    function toggleRecording() {
+        recording = !recording;
+        if (recording) {
+            recordButton.textContent = 'Остановить запись';
+            recordButton.style.backgroundColor = '#f00'; // Change button color to red
+            startGeolocation(); // Start tracking user's location
+        } else {
+            recordButton.textContent = 'Начать запись';
+            recordButton.style.backgroundColor = '#fff'; // Reset button color
+            navigator.geolocation.clearWatch(geolocationWatchId); // Stop tracking user's location
+            if (routePoints.length > 1) {
+                // Add a marker for the end point
+                const endPoint = routePoints[routePoints.length - 1];
+                map.geoObjects.add(new ymaps.Placemark(endPoint, {
+                    balloonContent: 'Конечная точка'
                 }, {
-                    enableHighAccuracy: true,
-                    maximumAge: 0,
-                    timeout: 5000
-                });
-            } else {
-                alert('Геолокация не поддерживается вашим браузером.');
+                    preset: 'islands#greenDotIcon'
+                }));
             }
         }
+    }
 
-        function stopRecording() {
-            if (watchId) {
-                navigator.geolocation.clearWatch(watchId);
-            }
+    let geolocationWatchId;
+    function startGeolocation() {
+        if (navigator.geolocation) {
+            geolocationWatchId = navigator.geolocation.watchPosition(position => {
+                const coords = [position.coords.latitude, position.coords.longitude];
+                updatePosition(coords);
+            }, error => {
+                console.error('Error getting position:', error);
+            }, {
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 27000
+            });
+        } else {
+            alert('Геолокация не поддерживается вашим браузером');
         }
+    }
+
+    function updatePosition(coords) {
+        // Add new position to the route points
+        routePoints.push(coords);
+
+        // Update the route line with new points
+        routeLine.geometry.setCoordinates(routePoints);
+
+        // Update map center
+        map.setCenter(coords);
+
+        // Add a placemark for the current position
+        map.geoObjects.add(new ymaps.Placemark(coords, {
+            balloonContent: 'Вы здесь'
+        }, {
+            preset: 'islands#redDotIcon'
+        }));
+
+        // Add a marker for the start point if it's the first point
+        if (routePoints.length === 1) {
+            map.geoObjects.add(new ymaps.Placemark(coords, {
+                balloonContent: 'Начальная точка'
+            }, {
+                preset: 'islands#blueDotIcon'
+            }));
+        }
+    }
+});
