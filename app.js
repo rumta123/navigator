@@ -1,81 +1,89 @@
 let map;
-let line;
-let startPoint;
-let endPoint;
-let recording = false;
-let watchId;
-let allPoints = []; // Массив для хранения всех точек маршрута
+        let marker;
+        let polyline;
+        let path = [];
+        let recording = false;
+        let watchId;
+        const recordButton = document.getElementById('recordButton');
 
-document.addEventListener('DOMContentLoaded', () => {
-    ymaps.ready(initMap);
-});
+        function initMap() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const coords = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
 
-function initMap() {
-    map = new ymaps.Map('map', {
-        center: [55.753994, 37.622093], // Moscow coordinates
-        zoom: 12,
-        controls: ['zoomControl', 'fullscreenControl']
-    });
+                    map = new google.maps.Map(document.getElementById('map'), {
+                        center: coords,
+                        zoom: 16,
+                        mapTypeId: 'roadmap',
+                        tilt: 0 // Ensure initial 2D view
+                    });
 
-    line = new ymaps.Polyline([], {
-        strokeColor: '#FF0000',
-        strokeWidth: 4
-    }, {
-        draggable: false
-    });
+                    marker = new google.maps.Marker({
+                        position: coords,
+                        map: map,
+                        title: 'Вы здесь'
+                    });
 
-    map.geoObjects.add(line);
+                    polyline = new google.maps.Polyline({
+                        map: map,
+                        path: path,
+                        geodesic: true,
+                        strokeColor: '#FF0000',
+                        strokeOpacity: 1.0,
+                        strokeWeight: 2
+                    });
 
-    document.getElementById('recordButton').addEventListener('click', toggleRecording);
-}
-
-function toggleRecording() {
-    recording = !recording;
-    if (recording) {
-        document.getElementById('recordButton').innerText = 'Остановить запись';
-        startRecording();
-    } else {
-        document.getElementById('recordButton').innerText = 'Начать запись';
-        stopRecording();
-    }
-}
-
-function startRecording() {
-    if (navigator.geolocation) {
-        watchId = navigator.geolocation.watchPosition(position => {
-            const coords = [position.coords.latitude, position.coords.longitude];
-
-            if (!startPoint) {
-                startPoint = coords;
-                map.geoObjects.add(new ymaps.Placemark(startPoint, { hintContent: 'Старт' }));
+                    recordButton.addEventListener('click', toggleRecording);
+                }, error => {
+                    console.error('Error getting position:', error);
+                    alert('Не удалось определить ваше местоположение.');
+                });
+            } else {
+                alert('Геолокация не поддерживается вашим браузером.');
             }
+        }
 
-            // Добавляем координаты в массив всех точек
-            allPoints.push(coords);
+        function toggleRecording() {
+            recording = !recording;
+            if (recording) {
+                recordButton.innerText = 'Остановить запись';
+                startRecording();
+            } else {
+                recordButton.innerText = 'Начать запись';
+                stopRecording();
+            }
+        }
 
-            // Обновляем конечную точку и строим линию
-            endPoint = coords;
-            map.geoObjects.add(new ymaps.Placemark(endPoint, { hintContent: 'Финиш' }));
+        function startRecording() {
+            watchId = navigator.geolocation.watchPosition(position => {
+                const newCoords = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+                
+                // Add the new coordinates to the path and update the polyline
+                path.push(newCoords);
+                polyline.setPath(path);
+                map.panTo(newCoords); // Optional: pan the map to the new position
 
-            const lineCoords = [startPoint, endPoint];
-            line.geometry.setCoordinates(lineCoords);
-            map.setCenter(endPoint);
-        }, error => {
-            console.error('Error getting position:', error);
-        }, {
-            enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: 5000
-        });
-    } else {
-        alert('Геолокация не поддерживается вашим браузером.');
-    }
-}
+                // Update the marker's position
+                marker.setPosition(newCoords);
+            }, error => {
+                console.error('Error getting position:', error);
+            }, {
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 5000
+            });
+        }
 
-function stopRecording() {
-    if (watchId !== undefined) {
-        navigator.geolocation.clearWatch(watchId);
-    }
-}
+        function stopRecording() {
+            if (watchId !== undefined) {
+                navigator.geolocation.clearWatch(watchId);
+            }
+        }
 
-window.onload = initMap;
+        window.onload = initMap;
